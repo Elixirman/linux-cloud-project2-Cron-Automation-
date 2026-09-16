@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 2: Cron Job Automation | Linux for Cloud Engineers</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --code-bg: #1e293b;
+            --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        code, pre, .code-block, kbd { font-family: 'Courier New', Monaco, Consolas, monospace; }
+
+        .sidebar {
+            position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-width);
+            background: var(--card-bg); border-right: 1px solid var(--border-color);
+            overflow-y: auto; z-index: 1000; padding: 2rem 0;
+        }
+        .sidebar-header { padding: 0 1.5rem 1.5rem; border-bottom: 2px solid var(--border-color); margin-bottom: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .sidebar-header h2 { font-size: 1.15rem; color: var(--primary-color); margin-bottom: 0.35rem; }
+        .sidebar-header p { font-size: 0.8rem; color: var(--text-secondary); }
+        .nav-links { list-style: none; padding: 0 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .nav-links li { margin-bottom: 0.2rem; }
+        .nav-links a { display: block; padding: 0.6rem 1rem; color: var(--text-secondary); text-decoration: none; border-radius: 0.5rem; transition: all 0.2s; font-size: 0.85rem; }
+        .nav-links a:hover { background: var(--bg-color); color: var(--primary-color); }
+        .nav-links a.active { background: var(--primary-color); color: white; }
+
+        .main-content { margin-left: var(--sidebar-width); }
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white; padding: 3.5rem 3rem; margin-bottom: 2rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .hero .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; opacity: 0.85; margin-bottom: 0.5rem; }
+        .hero h1 { font-size: 2.25rem; margin-bottom: 0.75rem; font-weight: 700; font-family: Georgia, serif; }
+        .hero p.subtitle { color: #4ade80; opacity: 1; font-weight: 500; font-size: 1.05rem; max-width: 760px; }
+        .badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; margin-top: 1rem; margin-right: 0.5rem; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 3rem 3rem; }
+        section { margin-bottom: 3rem; }
+
+        h2 { font-size: 1.75rem; color: var(--text-primary); margin-bottom: 1.25rem; padding-bottom: 0.6rem; border-bottom: 3px solid var(--primary-color); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        h3 { font-size: 1.3rem; color: var(--text-primary); margin: 1.75rem 0 0.85rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        h4 { font-size: 1.1rem; color: var(--primary-color); margin: 1.25rem 0 0.6rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        p { margin-bottom: 1rem; color: var(--text-primary); max-width: 74ch; }
+
+        .card { background: var(--card-bg); border-radius: 0.6rem; padding: 1.75rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border-color); }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+
+        .code-block {
+            background: var(--code-bg); color: #e2e8f0; border-radius: 0.5rem; padding: 1.4rem 1.5rem;
+            margin: 1rem 0; overflow-x: auto; font-size: 0.85rem; line-height: 1.7; position: relative;
+        }
+        .code-block::before {
+            content: 'SHELL'; position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(255,255,255,0.1);
+            padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-family: -apple-system, sans-serif;
+        }
+        .code-block code { white-space: pre; }
+        .keyword { color: #c678dd; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; font-style: italic; }
+        .function { color: #61afef; }
+        .variable { color: #e06c75; }
+        .number { color: #d19a66; }
+        .cronfield { color: #f59e0b; font-weight: bold; }
+
+        .diagram-container { background: var(--card-bg); border-radius: 0.75rem; padding: 1.5rem; margin: 1.5rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.08); border: 2px solid var(--border-color); }
+        .diagram-container svg { width: 100%; height: auto; display: block; }
+        .figure-caption { text-align: center; font-size: 0.85rem; color: var(--text-secondary); font-style: italic; margin-top: 0.75rem; font-family: -apple-system, sans-serif; }
+
+        .step { margin-bottom: 2rem; padding: 1.5rem 1.75rem; background: var(--card-bg); border-radius: 0.6rem; border-left: 4px solid var(--primary-color); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .step-label { font-family: -apple-system, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; color: var(--primary-color); font-weight: 700; margin-bottom: 0.4rem; }
+
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: var(--card-bg); border-radius: 0.5rem; overflow: hidden; font-family: -apple-system, sans-serif; font-size: 0.9rem; }
+        th, td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--primary-color); color: white; font-weight: 600; }
+        td.center, th.center { text-align: center; }
+
+        .alert { padding: 1rem 1.5rem; border-radius: 0.5rem; margin: 1rem 0; border-left: 4px solid; font-family: -apple-system, sans-serif; font-size: 0.92rem; }
+        .alert p, .alert strong { color: inherit; max-width: none; }
+        .alert-success { background: #d1fae5; border-color: var(--success-color); color: #065f46; }
+        .alert-error { background: #fee2e2; border-color: var(--error-color); color: #991b1b; }
+        .alert-warning { background: #fef3c7; border-color: var(--warning-color); color: #92400e; }
+        .alert-info { background: #dbeafe; border-color: var(--primary-color); color: #1e40af; }
+
+        ul, ol { margin: 1rem 0; padding-left: 1.75rem; color: var(--text-primary); max-width: 74ch; }
+        li { margin-bottom: 0.5rem; }
+
+        .skill-item { background: var(--card-bg); padding: 1.25rem 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); font-family: -apple-system, sans-serif; }
+        .skill-item h4 { margin-top: 0; }
+        .skill-item p { font-size: 0.88rem; color: var(--text-secondary); }
+
+        .exercise { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.4rem 1.6rem; border-radius: 0.6rem; margin-bottom: 1rem; font-family: -apple-system, sans-serif; }
+        .exercise h4 { color: white; margin-bottom: 0.5rem; }
+        .exercise p { color: rgba(255,255,255,0.9); max-width: none; }
+
+        .callout { background: var(--primary-color); color: white; padding: 2rem; border-radius: 0.75rem; margin: 2rem 0; font-family: -apple-system, sans-serif; }
+        .callout h3 { color: white; margin-top: 0; }
+        .callout p { color: rgba(255,255,255,0.9); max-width: none; }
+
+        .log-block { background: #0f172a; color: #4ade80; border-radius: 0.5rem; padding: 1.2rem 1.5rem; font-size: 0.82rem; overflow-x: auto; }
+
+        .mobile-menu-btn { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 1100; background: var(--primary-color); color: white; border: none; padding: 0.6rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; font-family: -apple-system, sans-serif; }
+
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: block; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .hero { padding: 2rem 1.5rem; }
+            .hero h1 { font-size: 1.6rem; }
+            .container { padding: 0 1.5rem 1.5rem; }
+            h2 { font-size: 1.4rem; }
+        }
+
+        html { scroll-behavior: smooth; }
+
+        footer { background: var(--text-primary); color: white; text-align: center; padding: 2rem; margin-top: 3rem; font-family: -apple-system, sans-serif; }
+        footer a { color: var(--accent-color); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>Linux Projects</h2>
+            <p>Cloud Engineering Track</p>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#overview" class="active">1. Overview</a></li>
+            <li><a href="#model">2. From Manual to Unattended</a></li>
+            <li><a href="#env-problem">3. The Environment Problem</a></li>
+            <li><a href="#script-change">4. Making the Script Self-Locating</a></li>
+            <li><a href="#scheduling">5. Writing the Crontab Entry</a></li>
+            <li><a href="#syntax">6. Crontab Syntax</a></li>
+            <li><a href="#testing">7. Testing Without Waiting</a></li>
+            <li><a href="#gitignore">8. The .gitignore Precedence Lesson</a></li>
+            <li><a href="#architecture">9. Architecture</a></li>
+            <li><a href="#evidence">10. Evidence of Execution</a></li>
+            <li><a href="#skills">11. Skills Matrix</a></li>
+            <li><a href="#failures">12. Failure Modes Encountered</a></li>
+            <li><a href="#exercises">13. Extension Exercises</a></li>
+            <li><a href="#next">14. Continuity to Project 3</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">Menu</button>
+
+        <section class="hero">
+            <div class="eyebrow">Simple Linux Projects for Cloud Engineers — Project 2</div>
+            <h1>Cron Job Automation</h1>
+            <p class="subtitle">Turning a script that runs correctly by hand into one that runs correctly unattended — the exact distinction that separates a personal utility from a production system.</p>
+            <div>
+                <span class="badge">Crontab</span>
+                <span class="badge">Scheduling</span>
+                <span class="badge">Unattended Execution</span>
+                <span class="badge">Logging</span>
+            </div>
+        </section>
+
+        <div class="container">
+
+            <section id="overview">
+                <h2>1. Overview</h2>
+                <div class="card">
+                    <p>Project 1 produced a script that performs a backup correctly when a human types the command and watches the output. That is a meaningful first step, but it is not yet automation — it still depends on someone remembering to run it, every night, indefinitely. A script that requires a human to remain reliable is not more trustworthy than the human's memory.</p>
+                    <p>This project removes that dependency using <code>cron</code>, the Linux daemon responsible for running commands on a fixed schedule without any user present. The mechanical part — writing a line into a crontab — takes a few minutes. The harder and more instructive part is that <strong>cron does not run a script the way an interactive shell does</strong>, and a script written only for interactive use will frequently fail the first time it runs unattended, often silently. This project is as much about that gap as it is about the scheduling syntax itself.</p>
+                </div>
+            </section>
+
+            <section id="model">
+                <h2>2. From Manual to Unattended</h2>
+                <div class="card">
+                    <p>The backup script from Project 1 was invoked directly: <code>./backup.sh</code>, typed in a terminal, in a specific directory, by a specific logged-in user, with that user's full shell environment available. Cron changes every one of those conditions at once. A cron job runs:</p>
+                    <ul>
+                        <li>with no controlling terminal, so nothing printed to standard output is visible unless explicitly redirected</li>
+                        <li>with a minimal environment — most of the shell variables an interactive session takes for granted are simply not set</li>
+                        <li>from an unspecified working directory, which should never be assumed to be the script's own folder or the user's home directory</li>
+                        <li>on a fixed schedule, with no opportunity for the script to ask a question or wait for input</li>
+                    </ul>
+                    <p>None of this is a defect in cron. It is cron behaving exactly as an unattended scheduler should. The obligation falls on the script: it must not depend on any assumption that only holds true in an interactive session.</p>
+                </div>
+            </section>
+
+            <section id="env-problem">
+                <h2>3. The Environment Problem</h2>
+                <div class="card">
+                    <p>The Project 1 script located its backup destination with <code>BACKUP_DIR="$HOME/backups"</code>. This works reliably when a logged-in user runs the script, because <code>$HOME</code> is part of that user's shell environment. Under cron, environment variables are not guaranteed to carry the same values — and more importantly, tying the backup location to <code>$HOME</code> at all was already the wrong design decision, independent of cron: it meant the script's output location depended on <em>who</em> ran it and <em>from where</em>, rather than being a fixed, predictable property of the script itself.</p>
+                    <div class="alert alert-warning">
+                        <strong>The general principle:</strong> a script intended to run unattended should never depend on the current working directory, an inherited environment variable, or any other piece of context that only exists because a human happened to be present when it started. Everything it needs should be derived from something stable — in this case, the script's own location on disk.
+                    </div>
+                </div>
+            </section>
+
+            <section id="script-change">
+                <h2>4. Making the Script Self-Locating</h2>
+                <div class="step">
+                    <p>The fix replaces <code>$HOME</code> with a path computed from the script's own file location, using the shell's special positional parameter <code>$0</code> — which always holds the path the script was invoked with, whether that invocation came from an interactive shell, an absolute path, or cron.</p>
+                    <div class="code-block">
+<code><span class="comment">#!/bin/bash</span>
+<span class="variable">SOURCE_DIR</span>=<span class="string">"/var/www/html"</span>
+<span class="variable">SCRIPT_DIR</span>=<span class="string">"$(</span><span class="keyword">cd</span> <span class="string">"$(dirname "$0")"</span> <span class="keyword">&amp;&amp;</span> <span class="function">pwd</span><span class="string">)"</span>
+<span class="variable">BACKUP_DIR</span>=<span class="string">"${SCRIPT_DIR}/backups"</span>
+<span class="variable">TIMESTAMP</span>=$(<span class="function">date</span> +<span class="string">"%Y-%m-%d_%H-%M-%S"</span>)
+<span class="variable">BACKUP_FILE</span>=<span class="string">"${BACKUP_DIR}/backup_${TIMESTAMP}.tar.gz"</span>
+
+<span class="keyword">if</span> [ ! -d <span class="string">"$SOURCE_DIR"</span> ]; <span class="keyword">then</span>
+    <span class="function">echo</span> <span class="string">"ERROR: Source directory '$SOURCE_DIR' does not exist."</span>
+    <span class="function">exit</span> <span class="number">1</span>
+<span class="keyword">fi</span>
+
+<span class="function">mkdir</span> -p <span class="string">"$BACKUP_DIR"</span>
+
+<span class="function">echo</span> <span class="string">"Starting backup of '$SOURCE_DIR'..."</span>
+<span class="function">tar</span> -czf <span class="string">"$BACKUP_FILE"</span> -C <span class="string">"$(dirname "$SOURCE_DIR")"</span> <span class="string">"$(basename "$SOURCE_DIR")"</span>
+
+<span class="keyword">if</span> [ $? -eq <span class="number">0</span> ]; <span class="keyword">then</span>
+    <span class="function">echo</span> <span class="string">"SUCCESS: Backup created at '$BACKUP_FILE'"</span>
+    <span class="function">exit</span> <span class="number">0</span>
+<span class="keyword">else</span>
+    <span class="function">echo</span> <span class="string">"ERROR: Backup failed."</span>
+    <span class="function">exit</span> <span class="number">1</span>
+<span class="keyword">fi</span></code>
+                    </div>
+                    <p><code>dirname "$0"</code> extracts the directory portion of the script's invocation path; wrapping it in <code>cd ... &amp;&amp; pwd</code> converts that into a clean absolute path regardless of whether the script was called with a relative path, an absolute path, or through a symlink. The result, <code>SCRIPT_DIR</code>, is then used to build <code>BACKUP_DIR</code> — so the archive always lands inside the project's own <code>backups/</code> folder, no matter who runs the script, from where, or under what scheduler.</p>
+                    <div class="alert alert-info">
+                        This is a small change in line count and a significant change in reliability. It is also the single most common defect in scripts that "worked when I tested them" and then failed the first time cron ran them.
+                    </div>
+                </div>
+            </section>
+
+            <section id="scheduling">
+                <h2>5. Writing the Crontab Entry</h2>
+                <div class="step">
+                    <p>Each user on a Linux system has a personal crontab, edited with <code>crontab -e</code> and never edited as a plain file on disk directly. The entry added for this project:</p>
+                    <div class="code-block">
+<code><span class="cronfield">0</span> <span class="cronfield">2</span> <span class="cronfield">*</span> <span class="cronfield">*</span> <span class="cronfield">*</span> /home/linux-guy/linux-project2/backup.sh &gt;&gt; /home/linux-guy/linux-project2/backups/backup.log 2&gt;&amp;1</code>
+                    </div>
+                    <p>Two details matter beyond the schedule itself. First, the path to the script is absolute — <code>~</code> and relative paths are not reliably expanded in a crontab and should never be used there. Second, the redirection: cron does not display a script's output anywhere a human will see it by default (historically it is mailed to the user via the system's mail transport, which is frequently unconfigured). Explicitly appending both standard output and standard error to a log file — <code>&gt;&gt; ... 2&gt;&amp;1</code> — is what turns an invisible unattended run into one with a durable, inspectable record.</p>
+                </div>
+            </section>
+
+            <section id="syntax">
+                <h2>6. Crontab Syntax</h2>
+                <div class="card">
+                    <p>A crontab line has five time fields, followed by the command to run:</p>
+                    <table>
+                        <thead>
+                            <tr><th class="center">Minute</th><th class="center">Hour</th><th class="center">Day of Month</th><th class="center">Month</th><th class="center">Day of Week</th><th>Command</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="center">0</td><td class="center">2</td><td class="center">*</td><td class="center">*</td><td class="center">*</td><td><code>/home/linux-guy/linux-project2/backup.sh &gt;&gt; .../backup.log 2&gt;&amp;1</code></td></tr>
+                        </tbody>
+                    </table>
+                    <p>Each field accepts a specific value, a range, a step, a comma-separated list, or <code>*</code> to mean "every value in this field." <code>0 2 * * *</code> reads as: minute 0, of hour 2, every day of the month, every month, every day of the week — in plain terms, every day at 02:00. Because the day-of-month and day-of-week fields are both <code>*</code>, no additional constraint is placed on which days qualify; the job runs daily.</p>
+                </div>
+            </section>
+
+            <section id="testing">
+                <h2>7. Testing Without Waiting</h2>
+                <div class="card">
+                    <p>A schedule of "once a day at 2 AM" is not something a reasonable engineer verifies by waiting until 2 AM. The standard practice is to add a second, temporary crontab entry timed a few minutes in the future, confirm it fires correctly, then remove it — leaving only the intended schedule in place.</p>
+                    <div class="code-block">
+<code><span class="comment"># Temporary — verifies execution a few minutes ahead, then removed</span>
+<span class="cronfield">9</span> <span class="cronfield">22</span> <span class="cronfield">*</span> <span class="cronfield">*</span> <span class="cronfield">*</span> /home/linux-guy/linux-project2/backup.sh &gt;&gt; /home/linux-guy/linux-project2/backups/backup.log 2&gt;&amp;1</code>
+                    </div>
+                    <p>This test entry ran at 22:09 on the day this project was built, with no manual invocation of the script, and produced a verified archive and a populated log — the evidence reproduced in Section 10. Once confirmed, the temporary line was deleted, leaving only the 02:00 schedule.</p>
+                    <div class="alert alert-success">
+                        A near-term test is not a shortcut around proper verification — it exercises the exact same code path (cron invoking the script directly, with cron's environment, not a human's) that the real 2 AM run will use. The only thing it changes is how long you wait to find out whether it worked.
+                    </div>
+                </div>
+            </section>
+
+            <section id="gitignore">
+                <h2>8. The .gitignore Precedence Lesson</h2>
+                <div class="card">
+                    <p>An early version of this project's <code>.gitignore</code>, carried over from Project 1, opened with a broad rule intended to keep the repository free of stray editor and OS files:</p>
+                    <div class="code-block">
+<code>.*
+!/.gitignore</code>
+                    </div>
+                    <p>This says: ignore every dotfile, then explicitly un-ignore <code>.gitignore</code> itself. It works, until a second dotfile needs to be tracked deliberately. A placeholder file — <code>backups/.gitkeep</code>, added specifically so an otherwise-empty directory would still exist in the repository — was silently caught by the same broad rule, and needed its own explicit exception (<code>!backups/.gitkeep</code>) before git would recognize it.</p>
+                    <p>Rather than repeat that pattern in this project, the <code>.gitignore</code> was written the other way around: list exactly what should be excluded, and exclude nothing else by default.</p>
+                    <div class="code-block">
+<code><span class="comment"># Generated backup artifacts — not source</span>
+backups/*.tar.gz
+backups/backup.log
+
+<span class="comment"># OS/editor cruft</span>
+.DS_Store
+*.swp</code>
+                    </div>
+                    <div class="alert alert-info">
+                        <strong>The general lesson:</strong> <code>.gitignore</code> rules are evaluated top to bottom, and a broad early pattern silently governs everything that comes after it — including files added much later, for unrelated reasons, by someone who has forgotten the broad rule exists. An explicit allow-list of what to ignore is more verbose than a blanket pattern, but it fails predictably: a newly added file is tracked by default rather than mysteriously absent from <code>git status</code>.
+                    </div>
+                </div>
+            </section>
+
+            <section id="architecture">
+                <h2>9. Architecture</h2>
+                <div class="diagram-container">
+                    <svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#64748b" />
+                            </marker>
+                        </defs>
+
+                        <rect x="20" y="30" width="180" height="80" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="110" y="60" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#1e293b">cron daemon</text>
+                        <text x="110" y="80" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">reads crontab</text>
+                        <text x="110" y="95" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">wakes every minute</text>
+
+                        <line x1="110" y1="110" x2="110" y2="150" stroke="#64748b" stroke-width="2" marker-end="url(#arrow2)"/>
+
+                        <rect x="20" y="150" width="180" height="70" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="110" y="178" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#92400e">02:00 daily match</text>
+                        <text x="110" y="196" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#92400e">0 2 * * *</text>
+
+                        <line x1="200" y1="185" x2="260" y2="185" stroke="#64748b" stroke-width="2" marker-end="url(#arrow2)"/>
+
+                        <rect x="260" y="140" width="220" height="110" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+                        <text x="370" y="165" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#1e293b">backup.sh</text>
+                        <text x="370" y="185" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">no inherited $HOME</text>
+                        <text x="370" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">SCRIPT_DIR from $0</text>
+                        <text x="370" y="215" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">no controlling terminal</text>
+                        <text x="370" y="230" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">runs as linux-guy</text>
+
+                        <line x1="480" y1="195" x2="540" y2="195" stroke="#64748b" stroke-width="2" marker-end="url(#arrow2)"/>
+
+                        <rect x="540" y="150" width="160" height="90" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+                        <text x="620" y="180" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#1e293b">backups/</text>
+                        <text x="620" y="200" text-anchor="middle" font-family="monospace" font-size="9" fill="#64748b">backup_*.tar.gz</text>
+                        <text x="620" y="215" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">gitignored</text>
+
+                        <line x1="370" y1="250" x2="370" y2="280" stroke="#64748b" stroke-width="2" marker-end="url(#arrow2)"/>
+                        <rect x="240" y="280" width="260" height="35" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5"/>
+                        <text x="370" y="302" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#3730a3" font-weight="600">backup.log ( &gt;&gt; ... 2&gt;&amp;1 )</text>
+
+                        <rect x="700" y="30" width="180" height="80" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,3"/>
+                        <text x="790" y="58" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#475569">Interactive shell</text>
+                        <text x="790" y="76" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">$HOME, $PATH, tty</text>
+                        <text x="790" y="91" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#64748b">present — NOT used by cron</text>
+                    </svg>
+                    <p class="figure-caption">Figure 1. Cron wakes every minute, matches the schedule field, and invokes the script directly — bypassing the interactive shell environment shown, dashed, on the right, that the original script mistakenly relied on.</p>
+                </div>
+                <div class="card">
+                    <h4>Reading the diagram</h4>
+                    <p>The dashed box on the right represents everything an interactive login shell provides that cron does not: an expanded <code>$HOME</code>, a full <code>$PATH</code>, a terminal to print to. The solid path down the left and center is what actually executes a scheduled job — the daemon matching the current minute against the crontab, invoking the script directly, with the script responsible for supplying its own context rather than inheriting it. The output branches into <code>backup.log</code> via explicit redirection, since nothing is captured otherwise.</p>
+                </div>
+            </section>
+
+            <section id="evidence">
+                <h2>10. Evidence of Execution</h2>
+                <div class="card">
+                    <p>The temporary near-term test described in Section 7 produced the following, entirely without manual intervention:</p>
+                    <div class="log-block">
+<code>$ date
+Wed Sep 16 22:12:11 WAT 2026
+
+$ cat backups/backup.log
+Starting backup of '/var/www/html'...
+SUCCESS: Backup created at '/home/linux-guy/linux-project2/backups/backup_2026-09-16_22-09-04.tar.gz'
+
+$ ls -lh backups/
+-rw-rw-r-- 1 linux-guy linux-guy 140 Sep 16 22:09 backup.log
+-rw-rw-r-- 1 linux-guy linux-guy 224 Sep 16 22:09 backup_2026-09-16_22-09-04.tar.gz</code>
+                    </div>
+                    <p>The timestamp inside the archive's filename (<code>22-09-04</code>) matches the scheduled minute, not the time this evidence was captured (<code>22:12</code>) — confirming the run was triggered by cron at the scheduled minute and not by a coincidental manual invocation shortly before.</p>
+                </div>
+            </section>
+
+            <section id="skills">
+                <h2>11. Skills Matrix</h2>
+                <div class="grid-3">
+                    <div class="skill-item"><h4>Crontab syntax</h4><p>The five time fields and how they combine to express a schedule</p></div>
+                    <div class="skill-item"><h4>Unattended execution</h4><p>Designing a script to run without an interactive shell present</p></div>
+                    <div class="skill-item"><h4>Output redirection</h4><p><code>&gt;&gt;</code> and <code>2&gt;&amp;1</code> to capture a process's output when no terminal exists</p></div>
+                    <div class="skill-item"><h4>Path resolution</h4><p>Deriving a script's own location from <code>$0</code> instead of trusting environment state</p></div>
+                    <div class="skill-item"><h4>.gitignore precedence</h4><p>How early broad patterns silently govern files added later</p></div>
+                    <div class="skill-item"><h4>Verification discipline</h4><p>Proving a schedule works with a near-term test rather than waiting</p></div>
+                </div>
+            </section>
+
+            <section id="failures">
+                <h2>12. Failure Modes Encountered</h2>
+                <div class="grid-2">
+                    <div class="alert alert-error">
+                        <h4>Backups written to the wrong location</h4>
+                        <p>The script's original <code>$HOME</code>-based path sent archives to a folder outside the project entirely. Fixed by deriving <code>BACKUP_DIR</code> from the script's own location instead of the caller's environment.</p>
+                    </div>
+                    <div class="alert alert-error">
+                        <h4>Executable bit not set after a heredoc write</h4>
+                        <p>A file written with <code>cat &gt;&gt; file &lt;&lt; EOF</code> is not executable until <code>chmod +x</code> is run separately — and in some terminals, a multi-line heredoc pasted as one block can fail to execute cleanly at all, silently writing shell syntax into the file as literal text. Verified afterward with <code>ls -la</code> to confirm the permission bits and <code>cat</code> to confirm the file's actual contents.</p>
+                    </div>
+                    <div class="alert alert-error">
+                        <h4>History expansion on an unescaped <code>!</code></h4>
+                        <p>An interactive Bash shell intercepts <code>!</code> for history recall by default, even inside double quotes. A line meant to be written literally into a file (<code>!backups/.gitkeep</code>) instead triggered <code>event not found</code>. Resolved by writing the line through an editor rather than <code>echo</code>, which never interprets its argument as a history reference.</p>
+                    </div>
+                    <div class="alert alert-error">
+                        <h4>A broad <code>.gitignore</code> pattern catching an unrelated file</h4>
+                        <p><code>.*</code>, intended to exclude OS and editor clutter, also silently excluded a deliberately created placeholder file (<code>.gitkeep</code>). See Section 8 for the fix and the general lesson.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="exercises">
+                <h2>13. Extension Exercises</h2>
+                <div class="exercise">
+                    <h4>1. Alert on failure</h4>
+                    <p>Extend the crontab entry, or the script itself, to send a notification — email, a webhook, a message to a monitoring endpoint — specifically when the exit code is nonzero, rather than requiring someone to read the log proactively.</p>
+                </div>
+                <div class="exercise">
+                    <h4>2. Rotate the log file</h4>
+                    <p>An append-only <code>backup.log</code> grows indefinitely. Integrate it with <code>logrotate</code>, or add a size- or age-based truncation step, so the log itself does not become an unmanaged growth problem.</p>
+                </div>
+                <div class="exercise">
+                    <h4>3. Add a systemd timer as an alternative</h4>
+                    <p>Implement the same nightly schedule using a systemd timer unit instead of cron, and compare the two: dependency ordering, logging via <code>journalctl</code>, and how failures are surfaced differ meaningfully between the two mechanisms.</p>
+                </div>
+                <div class="exercise">
+                    <h4>4. Guard against overlapping runs</h4>
+                    <p>If a backup ever takes longer than expected, a second cron-triggered run could start before the first finishes. Add a lock file (or use <code>flock</code>) so the script refuses to run if a previous instance is still active.</p>
+                </div>
+            </section>
+
+            <section id="next">
+                <h2>14. Continuity to Project 3</h2>
+                <div class="callout">
+                    <h3>Log Monitoring and Parsing</h3>
+                    <p>This project produced its first real log file — <code>backup.log</code> — and treated it as evidence to read by hand. Project 3 turns that habit into a tool: parsing a log file with <code>grep</code>, <code>awk</code>, and <code>sed</code> to surface specific error patterns automatically, rather than reading every line yourself. The backup log from this project is a natural, if simple, first target.</p>
+                </div>
+            </section>
+
+        </div>
+
+        <footer>
+            <p>Simple Linux Projects for Cloud Engineers — Project 2</p>
+        </footer>
+    </main>
+
+    <script>
+        const sections = document.querySelectorAll('[id]');
+        const navLinks = document.querySelectorAll('.nav-links a');
+        function highlightNavigation() {
+            let scrollY = window.pageYOffset;
+            sections.forEach(current => {
+                const sectionHeight = current.offsetHeight;
+                const sectionTop = current.offsetTop - 100;
+                const sectionId = current.getAttribute('id');
+                if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === '#' + sectionId) link.classList.add('active');
+                    });
+                }
+            });
+        }
+        window.addEventListener('scroll', highlightNavigation);
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
