@@ -1,0 +1,7 @@
+# Generated backup artifacts — not source
+backups/*.tar.gz
+backups/backup.log
+
+# OS/editor cruft
+.DS_Store
+*.swp
