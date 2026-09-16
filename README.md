@@ -24,7 +24,7 @@ Part of the *Simple Linux Projects for Cloud Engineers* series. Schedules the [P
 
 ## Architecture
 
-![Cron automation architecture](Schema.svg)
+![Cron automation architecture](schema_.png)
 
 Cron wakes every minute, matches the `0 2 * * *` schedule, and invokes `backup.sh` directly — bypassing the interactive shell environment (dashed box) that an earlier version of the script mistakenly relied on. Output branches into `backup.log` via explicit redirection, since cron gives the script no terminal to print to.
 
